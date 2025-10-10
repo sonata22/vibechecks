@@ -29,11 +29,20 @@ class VibeCheck:
             model: The name of the model to use for the LLM.
             config: VibeCheckConfig containing runtime knobs (e.g., num_tries).
 
+        Raises:
+            ValueError: If `model` is an empty string.
+            TypeError: If `config` is of invalid type.
+
         """
+        if not isinstance(model, str) or not model.strip():
+            raise ValueError("model must be a non-empty string.")
+
         if config is None:
             config = VibeCheckConfig()
         elif isinstance(config, dict):
             config = VibeCheckConfig(**config)
+        elif not isinstance(config, VibeCheckConfig):
+            raise TypeError("config must be a VibeCheckConfig, dict, or None.")
 
         self.llm = VibeLlmClient(client, model, config, console_logger)
 

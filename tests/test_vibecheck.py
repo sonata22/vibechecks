@@ -3,6 +3,7 @@
 from unittest.mock import Mock, patch
 
 import pytest
+from vibetools.exceptions import VibeLlmClientException
 
 from vibechecks.config.config import VibeCheckConfig
 from vibechecks.utils.logger import console_logger
@@ -61,3 +62,33 @@ def test_vibecheck_call_false(mock_vibe_llm_client: Mock):
 
     mock_llm_instance.vibe_eval.assert_called_once_with(statement, bool)
     assert result is False
+
+
+@pytest.mark.parametrize(
+    "client, model, config, error_type",
+    [
+        # Invalid client types - VibeLlmClient validates and raises VibeLlmClientException
+        pytest.param(None, "test-model", VibeCheckConfig(), VibeLlmClientException, id="client_none"),
+        pytest.param("not_a_client", "test-model", VibeCheckConfig(), VibeLlmClientException, id="client_string"),
+        pytest.param(123, "test-model", VibeCheckConfig(), VibeLlmClientException, id="client_int"),
+        pytest.param(["list"], "test-model", VibeCheckConfig(), VibeLlmClientException, id="client_list"),
+
+        # Invalid model types / values - VibeCheck validates and raises ValueError
+        pytest.param(Mock(), None, VibeCheckConfig(), ValueError, id="model_none"),
+        pytest.param(Mock(), "", VibeCheckConfig(), ValueError, id="model_empty"),
+        pytest.param(Mock(), "   ", VibeCheckConfig(), ValueError, id="model_whitespace"),
+        pytest.param(Mock(), 123, VibeCheckConfig(), ValueError, id="model_int"),
+        pytest.param(Mock(), ["model"], VibeCheckConfig(), ValueError, id="model_list"),
+        pytest.param(Mock(), {"name": "model"}, VibeCheckConfig(), ValueError, id="model_dict"),
+
+        # Invalid config types - VibeCheck validates and raises TypeError
+        pytest.param(Mock(), "test-model", "not_a_dict_or_config", TypeError, id="config_string"),
+        pytest.param(Mock(), "test-model", 123, TypeError, id="config_int"),
+        pytest.param(Mock(), "test-model", ["config"], TypeError, id="config_list"),
+        pytest.param(Mock(), "test-model", True, TypeError, id="config_bool"),
+    ],
+)
+def test_vibecheck_invalid_init(client, model, config, error_type):
+    """Ensure VibeCheck raises appropriate errors for invalid initialization parameters."""
+    with pytest.raises(error_type):
+        VibeCheck(client, model, config=config)
